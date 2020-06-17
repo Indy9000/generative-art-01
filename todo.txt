@@ -1,0 +1,9 @@
+1. load image function
+2. randomise the images
+3. pass the image to simulator and particles
+4. get imagedata and create luma function
+5. create clap function
+6. adjust the drawing functions
+7. set up ttl
+8. set up alpha
+9. finish with gallery
