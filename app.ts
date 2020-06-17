@@ -21,10 +21,10 @@ function ToLuma(r: number, g: number, b: number): number {
 	return 0.212 * r + 0.7152 * g + 0.0722 * b
 }
 
-// Linearly interpolate between a and b by a given scale (0,1)
-function lerp(a: number, b: number, scale: number): number {
-	return (1 - scale) * a + scale * b;
+function Clamp(min: number, max: number, value: number): number {
+	return value > max ? max : (value < min ? min : value)
 }
+
 //////////////////////////////////////////////
 // All objects including the simulation behaviour is described
 // by this interface
@@ -36,7 +36,7 @@ interface ISimObject {
 }
 
 // Particle Constants
-const MaxParticleSize = 3
+const MaxParticleSize = 6
 ////////////////////////////////////
 
 class Particle implements ISimObject {
@@ -46,21 +46,28 @@ class Particle implements ISimObject {
 	radius = 1.0 // size of the particle
 	ttl = 500 // how much time left to live
 	lifetime = 500 // how long this particle will live
-
+	alpha = 1.0
 	color = 'black'
 	constructor(private w: number, private h: number, private palette: string[]) {
-		this.x = GetRandomFloat(0, w)
-		this.y = GetRandomFloat(0, h)
+		this.reset()
+	}
+
+	reset() {
+		this.x = GetRandomFloat(0, this.w)
+		this.y = GetRandomFloat(0, this.h)
 
 		this.speed = GetRandomFloat(0, 3.0)
 		this.theta = GetRandomFloat(0, 2 * Math.PI)
 
-		this.radius = GetRandomFloat(0.05, MaxParticleSize)
+		this.radius = GetRandomFloat(0.05, 1)
 		this.lifetime = this.ttl = GetRandomInt(25, 50)
+		this.ttl = this.lifetime = GetRandomInt(25, 50)
 
-		this.color = palette[GetRandomInt(0, palette.length)]
+		this.color = 'black'
+		if (GetRandomFloat(0, 1) > 0.3) {
+			this.color = this.palette[GetRandomInt(1, this.palette.length)]
+		}
 	}
-
 	imageComplementLuma(imageData: ImageData): number {
 		const p = Math.floor(this.x) + Math.floor(this.y) * imageData.width
 		//ImageData contains RGBA values,
@@ -77,25 +84,38 @@ class Particle implements ISimObject {
 	Update(imageData: ImageData) {
 		// higher ln means darker
 		const ln = this.imageComplementLuma(imageData)
-
+		const lt = (this.lifetime - this.ttl) / this.lifetime
 		// Randomly move the particles
 
+		this.alpha = lt
 		// compute the delta change
-		let dRadius = GetRandomFloat(-MaxParticleSize / 10, MaxParticleSize / 10)
-		const dSpeed = GetRandomFloat(-0.01, 0.01) * ln
+		let dRadius = GetRandomFloat(-MaxParticleSize / 5, MaxParticleSize / 5)
+		const dSpeed = GetRandomFloat(-0.2, 0.2)
 		const dTheta = GetRandomFloat(-Math.PI / 8, Math.PI / 8)
 
 		// compute new values
 		this.speed += dSpeed
 		this.theta += dTheta
 
-		const [dx, dy] = FromPolar(this.speed, this.theta)
+		const [dx, dy] = FromPolar(this.speed * ln, this.theta * ln)
 
 		this.x += dx
 		this.y += dy
+		this.x = Clamp(0, this.w, this.x)
+		this.y = Clamp(0, this.h, this.y)
+
 		this.radius += dRadius
 		// radius has to be positive
-		this.radius += (this.radius < 0) ? - 2 * dRadius : 0
+		this.radius = Clamp(0, MaxParticleSize, this.radius) * ln
+		if (this.speed < 1) {
+			this.radius = 0.1
+		}
+
+		// manage lifetime
+		this.ttl += -1
+		if (this.ttl == 0) {
+			this.reset()
+		}
 	}
 
 	Draw(ctx: CanvasRenderingContext2D) {
@@ -106,6 +126,7 @@ class Particle implements ISimObject {
 
 	experiment1(ctx: CanvasRenderingContext2D) {
 		ctx.fillStyle = this.color
+		ctx.globalAlpha = this.alpha
 		let circle = new Path2D()
 		circle.arc(this.x, this.y, this.radius, 0, 2 * Math.PI)
 		ctx.fill(circle)
@@ -195,7 +216,8 @@ function bootstrapper() {
 		createDrawCanvas(ctx, width, height)
 	}
 
-	image.src = 'vg.jpg'
+	const images = ['vg.jpg', 'eiffel.jpg', 'elon.jpg', 'gpe.jpg', 'hokusai.jpg', 'joker.jpg', 'scarjo.jpg']
+	image.src = images[GetRandomInt(0, images.length)]
 }
 
 bootstrapper()
