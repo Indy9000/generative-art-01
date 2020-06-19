@@ -1,6 +1,15 @@
 <html>
-	<head></head>
-	<body>
-		<script src="app.js"></script>
-	</body>
+
+<head></head>
+
+<body>
+	<script id='sc1'></script>
+	<script>
+		var timestamp = +new Date;
+		var url = "app.js?t=" + timestamp;
+		document.getElementById('sc1').src = url;
+	</script>
+
+</body>
+
 </html>
